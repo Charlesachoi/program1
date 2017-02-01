@@ -1,0 +1,10 @@
+
+<project>
+
+    <target name="compile">
+		<javac includeantruntime="false" srcdir="." destdir="."/>
+	</target>
+
+</project>
+
+

@@ -31,6 +31,10 @@ public class WebWorker implements Runnable
 {
 
 private Socket socket;
+private String pathName;
+private Boolean locExists;
+private Boolean locDirectory;
+private File checkFile;
 
 /**
 * Constructor: must have a valid open socket
@@ -53,8 +57,8 @@ public void run()
       InputStream  is = socket.getInputStream();
       OutputStream os = socket.getOutputStream();
       readHTTPRequest(is);
-      writeHTTPHeader(os,"text/html");
-      writeContent(os);
+      writeHTTPHeader(os,"text/html"); //change header type of request
+      writeContent(os);                
       os.flush();
       socket.close();
    } catch (Exception e) {
@@ -70,11 +74,50 @@ public void run()
 private void readHTTPRequest(InputStream is)
 {
    String line;
+   int count = 0;
+   
    BufferedReader r = new BufferedReader(new InputStreamReader(is));
+   
    while (true) {
+	   
+	   count++;
+	   
       try {
+    	  
          while (!r.ready()) Thread.sleep(1);
          line = r.readLine();
+          
+         //execute once
+         if (count == 1)
+         {
+                 
+           String strAr[] = line.split(" "); 
+           checkFile = new File(strAr[1].substring(1)); 
+           
+           //If Root Directory
+           if(strAr[1].equals("/")) 
+           {
+              locExists = true; 
+              locDirectory = true;
+           }//root
+           
+           //If File Found
+           else if(checkFile.exists())
+           {
+              locExists = true;
+              locDirectory = false;
+           }//found
+           
+           //If File Not Found
+           else
+           {
+              locExists = false;
+              locDirectory = false; 
+           }//not found
+           
+           pathName = line.substring(5, line.indexOf(' ', 4)); //global variable with path
+         }
+         
          System.err.println("Request line: ("+line+")");
          if (line.length()==0) break;
       } catch (Exception e) {
@@ -95,11 +138,16 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
    Date d = new Date();
    DateFormat df = DateFormat.getDateTimeInstance();
    df.setTimeZone(TimeZone.getTimeZone("GMT"));
-   os.write("HTTP/1.1 200 OK\n".getBytes());
+   
+   if (locExists == true)
+      os.write("HTTP/1.1 200 OK\n".getBytes());
+   else 
+      os.write("HTTP/1.1 404 File Not Found\n".getBytes());
+   
    os.write("Date: ".getBytes());
    os.write((df.format(d)).getBytes());
    os.write("\n".getBytes());
-   os.write("Server: Jon's very own server\n".getBytes());
+   os.write("Server: Charles' very own server\n".getBytes());
    //os.write("Last-Modified: Wed, 08 Jan 2003 23:11:55 GMT\n".getBytes());
    //os.write("Content-Length: 438\n".getBytes()); 
    os.write("Connection: close\n".getBytes());
@@ -116,9 +164,43 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
 **/
 private void writeContent(OutputStream os) throws Exception
 {
-   os.write("<html><head></head><body>\n".getBytes());
-   os.write("<h3>My web server works!</h3>\n".getBytes());
-   os.write("</body></html>\n".getBytes());
-}
+		//if the html file exists in the given location
+		if ((locExists == true) && (locDirectory == false))
+		{     
+	         String fileContents;
+	         
+	         //Conversion of pathName to appropriate format
+	         FileInputStream fis = new FileInputStream(pathName);
+	         DataInputStream dis = new DataInputStream(fis);
+	         InputStreamReader isr = new InputStreamReader(dis);
+	         BufferedReader br = new BufferedReader(isr);
+	   
+	         while ((fileContents = br.readLine()) != null) 
+	         {
+	            //If html file has the tag <cs371date> write date
+	            if (fileContents.contains("<cs371date>"))
+	               os.write(new Date().toString().getBytes());
+	      
+	            //If html file has the tag <cs371server> write statement
+	            else if (fileContents.contains("<cs371server>"))
+	               os.write("You are at the Server (Port: 8080)".getBytes());
+	            //write html file contents
+	            else
+	               os.write(fileContents.getBytes());
+	   
+	         }  
+	   }
+	   
+	   //If there is no location given other than local host port.
+	   else if ((locExists == true) && (locDirectory == true))
+	   {
+			os.write("<html><head></head><body>\n".getBytes());
+			os.write("<center><h3>Charles Choi's Web Server</h3></center>\n".getBytes());
+			os.write("</body></html>\n".getBytes());
+	   }
+	   //If location was given but does not exist.
+	   else
+	      os.write("<center><h3>404 - File Not Found\n</h3></center>\n".getBytes());   
+}	
 
 } // end class
