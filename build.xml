@@ -1,8 +1,18 @@
 
 <project>
 
-    <target name="compile">
+    <target name="run">
 		<javac includeantruntime="false" srcdir="." destdir="."/>
+		<delete dir="jar"/>
+	    <mkdir dir="jar"/>
+        <jar destfile="jar/WebServer.jar" basedir=".">
+            <manifest>
+                <attribute name="Main-Class" value="WebServer"/>
+            </manifest>
+        </jar>
+ 
+
+		<java jar="jar/WebServer.jar" fork="true"/>
 	</target>
 
 </project>
